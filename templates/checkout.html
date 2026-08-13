@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}ShopEase - Checkout{% endblock %}
+{% block content %}
+<h1 class="page-title">💳 Checkout</h1>
+<form method="post" class="checkout-grid">
+  <section class="panel">
+    <h2>📍 Delivery Address</h2>
+    <textarea name="address" required placeholder="Enter your full delivery address"></textarea>
+    <h2>💳 Payment Method</h2>
+    <label class="radio"><input type="radio" name="payment" value="Cash on Delivery" checked> Cash on Delivery</label>
+    <label class="radio"><input type="radio" name="payment" value="UPI"> UPI</label>
+    <label class="radio"><input type="radio" name="payment" value="Credit / Debit Card"> Credit / Debit Card</label>
+  </section>
+  <aside class="summary">
+    <h2>Order Summary</h2>
+    {% for item in items %}
+    <div class="summary-line"><span>{{ item['name'] }} × {{ item['quantity'] }}</span><strong>₹{{ "{:,.0f}".format(item['price']*item['quantity']) }}</strong></div>
+    {% endfor %}
+    <hr>
+    <div class="total">₹{{ "{:,.0f}".format(total + (0 if total >= 1000 else 49)) }}</div>
+    <button class="btn success wide" type="submit">PLACE ORDER ✓</button>
+  </aside>
+</form>
+{% endblock %}

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>
+        {% block title %}ShopEase{% endblock %}
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+<header class="topbar">
+
+    <a
+        class="brand"
+        href="{% if logged_user %}{{ url_for('home') }}{% else %}{{ url_for('login') }}{% endif %}"
+    >
+        🛍️ ShopEase
+    </a>
+
+    {% if logged_user %}
+
+        <div class="welcome">
+            Welcome, {{ logged_user }} 👋
+        </div>
+
+    {% endif %}
+
+</header>
+
+
+{% if logged_user %}
+
+<nav class="nav">
+
+    <a
+        href="{{ url_for('home') }}"
+        class="{% if request.endpoint == 'home' %}active{% endif %}"
+    >
+        🏠 Home
+    </a>
+
+
+    <a
+        href="{{ url_for('wishlist') }}"
+        class="{% if request.endpoint == 'wishlist' %}active{% endif %}"
+    >
+        ❤️ Wishlist
+        <span>{{ wishlist_count }}</span>
+    </a>
+
+
+    <a
+        href="{{ url_for('cart') }}"
+        class="{% if request.endpoint in ['cart', 'checkout'] %}active{% endif %}"
+    >
+        🛒 Cart
+        <span id="cart-count">{{ cart_count }}</span>
+    </a>
+
+
+    <a
+        href="{{ url_for('orders') }}"
+        class="{% if request.endpoint == 'orders' %}active{% endif %}"
+    >
+        📦 Orders
+    </a>
+
+
+    <a href="{{ url_for('checkout') }}">
+        💳 Checkout
+    </a>
+
+
+    <a
+        href="{{ url_for('logout') }}"
+        class="logout"
+    >
+        🚪 Logout
+    </a>
+
+</nav>
+
+{% endif %}
+
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+
+    {% if messages %}
+
+        <div class="messages">
+
+            {% for category, message in messages %}
+
+                <div class="flash {{ category }}">
+                    {{ message }}
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% endif %}
+
+{% endwith %}
+
+
+<main class="page">
+
+    {% block content %}{% endblock %}
+
+</main>
+
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+</body>
+
+</html>

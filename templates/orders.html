@@ -1,0 +1,596 @@
+{% extends "base.html" %}
+
+{% block title %}ShopEase - My Orders{% endblock %}
+
+{% block content %}
+
+<div class="orders-page">
+
+    <div class="orders-title">
+
+        <div>
+            <h1>📦 My Orders</h1>
+            <p>Track and view all your previous orders</p>
+        </div>
+
+        <a
+            href="{{ url_for('home') }}"
+            class="shop-button"
+        >
+            🛍 Continue Shopping
+        </a>
+
+    </div>
+
+
+    {% if orders %}
+
+        <div class="orders-list">
+
+            {% for x in orders %}
+
+                <div class="order-card">
+
+                    <!-- ORDER HEADER -->
+
+                    <div class="order-header">
+
+                        <div>
+
+                            <div class="order-label">
+                                ORDER
+                            </div>
+
+                            <h2>
+                                #{{ x["order"]["order_code"] }}
+                            </h2>
+
+                        </div>
+
+
+                        <div class="order-date">
+
+                            <span>
+                                📅
+                            </span>
+
+                            {{ x["order"]["created_at"] }}
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- STATUS -->
+
+                    <div class="status-box">
+
+                        <span class="status-icon">
+                            ✓
+                        </span>
+
+                        <div>
+
+                            <strong>
+                                {{ x["order"]["status"] }}
+                            </strong>
+
+                            <small>
+                                Your order has been placed successfully.
+                            </small>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ORDER ITEMS -->
+
+                    <div class="section-title">
+                        🛒 Order Items
+                    </div>
+
+
+                    <div class="order-items">
+
+                        {% for item in x["items"] %}
+
+                            <div class="order-item">
+
+                                <div class="item-info">
+
+                                    <div class="item-name">
+                                        {{ item["product_name"] }}
+                                    </div>
+
+                                    <div class="item-quantity">
+                                        Quantity:
+                                        {{ item["quantity"] }}
+                                    </div>
+
+                                </div>
+
+
+                                <div class="item-price">
+
+                                    ₹{{ "{:,.0f}".format(
+                                        item["price"] * item["quantity"]
+                                    ) }}
+
+                                </div>
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <!-- ORDER DETAILS -->
+
+                    <div class="details-grid">
+
+                        <div class="detail-box">
+
+                            <span class="detail-icon">
+                                💳
+                            </span>
+
+                            <div>
+
+                                <small>
+                                    Payment Method
+                                </small>
+
+                                <strong>
+                                    {{ x["order"]["payment"] }}
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="detail-box">
+
+                            <span class="detail-icon">
+                                📍
+                            </span>
+
+                            <div>
+
+                                <small>
+                                    Delivery Address
+                                </small>
+
+                                <strong>
+                                    {{ x["order"]["address"] }}
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- TOTAL -->
+
+                    <div class="order-footer">
+
+                        <span>
+                            Total Amount
+                        </span>
+
+                        <strong>
+                            ₹{{ "{:,.0f}".format(
+                                x["order"]["total"]
+                            ) }}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="empty-orders">
+
+            <div class="empty-icon">
+                📦
+            </div>
+
+            <h2>
+                No Orders Yet
+            </h2>
+
+            <p>
+                You haven't placed any orders yet.
+                Start shopping and your completed orders
+                will appear here.
+            </p>
+
+            <a
+                href="{{ url_for('home') }}"
+                class="shop-button"
+            >
+                🛍 Start Shopping
+            </a>
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+
+<style>
+
+/* ========================= */
+/* ORDERS PAGE */
+/* ========================= */
+
+.orders-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding-bottom: 40px;
+}
+
+
+/* TITLE */
+
+.orders-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 28px;
+}
+
+
+.orders-title h1 {
+    margin: 0;
+    font-size: 32px;
+    color: #222;
+}
+
+
+.orders-title p {
+    margin: 7px 0 0;
+    color: #777;
+    font-size: 15px;
+}
+
+
+/* BUTTON */
+
+.shop-button {
+    display: inline-block;
+    padding: 11px 18px;
+    border-radius: 10px;
+    background: #667eea;
+    color: white;
+    text-decoration: none;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+
+.shop-button:hover {
+    background: #5568d8;
+    transform: translateY(-1px);
+}
+
+
+/* ORDER LIST */
+
+.orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+
+/* ORDER CARD */
+
+.order-card {
+    background: white;
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.08);
+    border: 1px solid #eee;
+}
+
+
+/* HEADER */
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding-bottom: 17px;
+    border-bottom: 1px solid #eee;
+}
+
+
+.order-label {
+    color: #888;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+
+.order-header h2 {
+    margin: 4px 0 0;
+    font-size: 20px;
+    color: #333;
+}
+
+
+.order-date {
+    color: #777;
+    font-size: 13px;
+}
+
+
+/* STATUS */
+
+.status-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 18px 0;
+    padding: 13px 15px;
+    border-radius: 11px;
+    background: #ecfdf3;
+    border: 1px solid #c9f3d9;
+}
+
+
+.status-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #20a464;
+    color: white;
+    font-weight: 800;
+}
+
+
+.status-box strong {
+    display: block;
+    color: #16834d;
+    font-size: 14px;
+}
+
+
+.status-box small {
+    display: block;
+    margin-top: 2px;
+    color: #666;
+}
+
+
+/* SECTION TITLE */
+
+.section-title {
+    margin: 20px 0 10px;
+    font-weight: 800;
+    color: #333;
+}
+
+
+/* ITEMS */
+
+.order-items {
+    border: 1px solid #eee;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+
+.order-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #eee;
+}
+
+
+.order-item:last-child {
+    border-bottom: none;
+}
+
+
+.item-name {
+    font-weight: 700;
+    color: #333;
+}
+
+
+.item-quantity {
+    margin-top: 4px;
+    color: #777;
+    font-size: 13px;
+}
+
+
+.item-price {
+    font-weight: 800;
+    color: #333;
+    white-space: nowrap;
+}
+
+
+/* DETAILS */
+
+.details-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 18px;
+}
+
+
+.detail-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+    padding: 15px;
+    border-radius: 12px;
+    background: #f8f9fc;
+}
+
+
+.detail-icon {
+    font-size: 21px;
+}
+
+
+.detail-box small {
+    display: block;
+    margin-bottom: 4px;
+    color: #888;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+
+.detail-box strong {
+    display: block;
+    color: #333;
+    font-size: 14px;
+    word-break: break-word;
+}
+
+
+/* FOOTER */
+
+.order-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 2px solid #eee;
+}
+
+
+.order-footer span {
+    color: #666;
+    font-weight: 600;
+}
+
+
+.order-footer strong {
+    color: #667eea;
+    font-size: 24px;
+}
+
+
+/* EMPTY */
+
+.empty-orders {
+    text-align: center;
+    padding: 70px 25px;
+    background: white;
+    border-radius: 18px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.07);
+}
+
+
+.empty-icon {
+    font-size: 65px;
+    margin-bottom: 15px;
+}
+
+
+.empty-orders h2 {
+    margin: 0 0 8px;
+    color: #333;
+}
+
+
+.empty-orders p {
+    max-width: 500px;
+    margin: 0 auto 22px;
+    line-height: 1.6;
+    color: #777;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 700px) {
+
+    .orders-title {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+
+    .orders-title h1 {
+        font-size: 26px;
+    }
+
+
+    .order-card {
+        padding: 15px;
+    }
+
+
+    .order-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+
+    .order-date {
+        font-size: 12px;
+    }
+
+
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+
+
+    .order-item {
+        padding: 12px;
+    }
+
+
+    .item-name {
+        font-size: 14px;
+    }
+
+
+    .item-price {
+        font-size: 14px;
+    }
+
+
+    .order-footer strong {
+        font-size: 20px;
+    }
+
+}
+
+</style>
+
+{% endblock %}

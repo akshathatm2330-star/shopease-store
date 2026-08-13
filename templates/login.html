@@ -1,0 +1,434 @@
+{% extends "base.html" %}
+
+{% block title %}ShopEase - Login{% endblock %}
+
+
+{% block content %}
+
+<div class="login-page">
+
+    <div class="login-container">
+
+
+        <!-- LEFT SIDE -->
+
+        <section class="login-left">
+
+            <div class="brand-icon">
+                🛍️
+            </div>
+
+
+            <h1>
+                ShopEase
+            </h1>
+
+
+            <p class="tagline">
+                Everything you love.<br>
+                In one place.
+            </p>
+
+
+            <div class="features">
+
+                <div>
+                    <span>✓</span>
+                    Quality Products
+                </div>
+
+                <div>
+                    <span>✓</span>
+                    Best Prices
+                </div>
+
+                <div>
+                    <span>✓</span>
+                    Secure Shopping
+                </div>
+
+                <div>
+                    <span>✓</span>
+                    Fast Delivery
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- RIGHT SIDE -->
+
+        <section class="login-card">
+
+            <div class="login-heading">
+
+                <h2>
+                    Welcome Back! 👋
+                </h2>
+
+                <p>
+                    Login to continue shopping
+                </p>
+
+            </div>
+
+
+            <form
+                method="POST"
+                action="{{ url_for('login') }}"
+                class="login-form"
+            >
+
+                <div class="form-group">
+
+                    <label for="username">
+                        Username
+                    </label>
+
+                    <input
+                        id="username"
+                        name="username"
+                        type="text"
+                        placeholder="Enter your username"
+                        autocomplete="username"
+                        required
+                        autofocus
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="password">
+                        Password
+                    </label>
+
+                    <input
+                        id="password"
+                        name="password"
+                        type="password"
+                        placeholder="Enter your password"
+                        autocomplete="current-password"
+                        required
+                    >
+
+                </div>
+
+
+                <button
+                    type="submit"
+                    class="login-button"
+                >
+                    LOGIN
+                    <span>→</span>
+                </button>
+
+            </form>
+
+
+            <div class="login-hint">
+
+                <span>💡</span>
+
+                <p>
+                    New username?
+                    Your account will be created automatically.
+                </p>
+
+            </div>
+
+        </section>
+
+    </div>
+
+</div>
+
+
+<style>
+
+.login-page {
+    min-height: calc(100vh - 100px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 35px 20px;
+}
+
+
+.login-container {
+    width: 100%;
+    max-width: 920px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    overflow: hidden;
+    border-radius: 25px;
+    background: white;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.16);
+}
+
+
+/* LEFT */
+
+.login-left {
+    padding: 55px 45px;
+    color: white;
+    background: linear-gradient(
+        135deg,
+        #667eea,
+        #764ba2
+    );
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+
+.brand-icon {
+    width: 78px;
+    height: 78px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 22px;
+
+    background: rgba(255,255,255,0.18);
+
+    font-size: 40px;
+
+    margin-bottom: 22px;
+}
+
+
+.login-left h1 {
+    margin: 0;
+    font-size: 44px;
+    font-weight: 800;
+}
+
+
+.tagline {
+    margin: 12px 0 32px;
+
+    font-size: 18px;
+    line-height: 1.6;
+
+    opacity: 0.95;
+}
+
+
+.features {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+
+.features div {
+    font-size: 15px;
+}
+
+
+.features span {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    width: 25px;
+    height: 25px;
+
+    margin-right: 8px;
+
+    border-radius: 50%;
+
+    background: rgba(255,255,255,0.20);
+}
+
+
+/* LOGIN CARD */
+
+.login-card {
+    padding: 50px 42px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+
+.login-heading h2 {
+    margin: 0;
+
+    font-size: 29px;
+
+    color: #222;
+}
+
+
+.login-heading p {
+    margin: 9px 0 30px;
+
+    color: #777;
+}
+
+
+/* FORM */
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+
+.form-group label {
+    margin-bottom: 7px;
+
+    color: #333;
+
+    font-size: 14px;
+    font-weight: 700;
+}
+
+
+.form-group input {
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: 14px 15px;
+
+    border: 1px solid #ddd;
+    border-radius: 10px;
+
+    font-size: 15px;
+
+    outline: none;
+
+    transition: 0.2s;
+}
+
+
+.form-group input:focus {
+    border-color: #667eea;
+
+    box-shadow:
+        0 0 0 3px rgba(102,126,234,0.13);
+}
+
+
+/* LOGIN BUTTON */
+
+.login-button {
+    width: 100%;
+
+    padding: 14px;
+
+    margin-top: 5px;
+
+    border: none;
+    border-radius: 10px;
+
+    background: linear-gradient(
+        135deg,
+        #667eea,
+        #764ba2
+    );
+
+    color: white;
+
+    font-size: 15px;
+    font-weight: 800;
+
+    cursor: pointer;
+
+    transition: 0.2s;
+}
+
+
+.login-button span {
+    margin-left: 7px;
+}
+
+
+.login-button:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 8px 20px rgba(102,126,234,0.30);
+}
+
+
+/* HINT */
+
+.login-hint {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 9px;
+
+    margin-top: 25px;
+
+    padding: 13px;
+
+    border-radius: 10px;
+
+    background: #f5f6fa;
+}
+
+
+.login-hint span {
+    font-size: 18px;
+}
+
+
+.login-hint p {
+    margin: 0;
+
+    color: #777;
+
+    font-size: 12px;
+
+    line-height: 1.5;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 700px) {
+
+    .login-container {
+        grid-template-columns: 1fr;
+    }
+
+
+    .login-left {
+        padding: 38px 30px;
+    }
+
+
+    .login-left h1 {
+        font-size: 35px;
+    }
+
+
+    .login-card {
+        padding: 35px 25px;
+    }
+
+}
+
+</style>
+
+{% endblock %}
