@@ -77,7 +77,7 @@ PRODUCTS = [
 
 
 # =========================================================
-# DATABASE CONNECTION
+# DATABASE
 # =========================================================
 
 def db():
@@ -94,125 +94,95 @@ def db():
     return conn
 
 
-# =========================================================
-# DATABASE INITIALIZATION
-# =========================================================
-
 def init_db():
 
     conn = db()
 
-    try:
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        );
 
-        conn.executescript("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL
-            );
+        CREATE TABLE IF NOT EXISTS cart (
+            user_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            PRIMARY KEY(user_id, product_id)
+        );
 
-            CREATE TABLE IF NOT EXISTS cart (
-                user_id INTEGER NOT NULL,
-                product_id INTEGER NOT NULL,
-                quantity INTEGER NOT NULL DEFAULT 1,
-                PRIMARY KEY(user_id, product_id)
-            );
+        CREATE TABLE IF NOT EXISTS wishlist (
+            user_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            PRIMARY KEY(user_id, product_id)
+        );
 
-            CREATE TABLE IF NOT EXISTS wishlist (
-                user_id INTEGER NOT NULL,
-                product_id INTEGER NOT NULL,
-                PRIMARY KEY(user_id, product_id)
-            );
+        CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            order_code TEXT NOT NULL,
+            total REAL NOT NULL,
+            payment TEXT NOT NULL,
+            address TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'Order Placed',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
 
-            CREATE TABLE IF NOT EXISTS orders (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                order_code TEXT NOT NULL,
-                total REAL NOT NULL,
-                payment TEXT NOT NULL,
-                address TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'Order Placed',
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );
+        CREATE TABLE IF NOT EXISTS order_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            product_name TEXT NOT NULL,
+            price REAL NOT NULL,
+            quantity INTEGER NOT NULL
+        );
 
-            CREATE TABLE IF NOT EXISTS order_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                order_id INTEGER NOT NULL,
-                product_id INTEGER NOT NULL,
-                product_name TEXT NOT NULL,
-                price REAL NOT NULL,
-                quantity INTEGER NOT NULL
-            );
+        CREATE TABLE IF NOT EXISTS products (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            image TEXT NOT NULL,
+            price REAL NOT NULL,
+            old_price REAL NOT NULL,
+            category TEXT NOT NULL,
+            rating REAL NOT NULL,
+            reviews INTEGER NOT NULL,
+            description TEXT NOT NULL
+        );
+    """)
 
-            CREATE TABLE IF NOT EXISTS products (
-                id INTEGER PRIMARY KEY,
-                name TEXT NOT NULL,
-                image TEXT NOT NULL,
-                price REAL NOT NULL,
-                old_price REAL NOT NULL,
-                category TEXT NOT NULL,
-                rating REAL NOT NULL,
-                reviews INTEGER NOT NULL,
-                description TEXT NOT NULL
-            );
-        """)
+    for product_id, product in enumerate(PRODUCTS, start=1):
 
-        for product_id, product in enumerate(PRODUCTS, start=1):
+        conn.execute("""
+            INSERT OR REPLACE INTO products
+            (
+                id,
+                name,
+                image,
+                price,
+                old_price,
+                category,
+                rating,
+                reviews,
+                description
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            product_id,
+            *product
+        ))
 
-            conn.execute("""
-                INSERT OR REPLACE INTO products
-                (
-                    id,
-                    name,
-                    image,
-                    price,
-                    old_price,
-                    category,
-                    rating,
-                    reviews,
-                    description
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                product_id,
-                *product
-            ))
-
-        conn.commit()
-
-    finally:
-
-        conn.close()
+    conn.commit()
+    conn.close()
 
 
 # =========================================================
-# IMPORTANT FOR RENDER
-# =========================================================
-#
-# Gunicorn starts the application using:
-#
-# gunicorn app:app
-#
-# Therefore this code MUST run when app.py is imported.
-#
-# This fixes:
-# sqlite3.OperationalError: no such table: users
-#
-
-init_db()
-
-
-# =========================================================
-# LOGIN CHECK
+# HELPERS
 # =========================================================
 
 def logged_in():
     return "user_id" in session
 
-
-# =========================================================
-# CART HELPER
-# =========================================================
 
 def get_cart():
 
@@ -221,31 +191,23 @@ def get_cart():
 
     conn = db()
 
-    try:
+    rows = conn.execute("""
+        SELECT
+            p.*,
+            c.quantity
+        FROM cart c
+        JOIN products p
+            ON p.id = c.product_id
+        WHERE c.user_id = ?
+        ORDER BY p.id
+    """, (
+        session["user_id"],
+    )).fetchall()
 
-        rows = conn.execute("""
-            SELECT
-                p.*,
-                c.quantity
-            FROM cart c
-            JOIN products p
-                ON p.id = c.product_id
-            WHERE c.user_id = ?
-            ORDER BY p.id
-        """, (
-            session["user_id"],
-        )).fetchall()
+    conn.close()
 
-        return rows
+    return rows
 
-    finally:
-
-        conn.close()
-
-
-# =========================================================
-# CART TOTAL
-# =========================================================
 
 def get_cart_total():
 
@@ -257,9 +219,45 @@ def get_cart_total():
     )
 
 
-# =========================================================
-# WISHLIST IDS
-# =========================================================
+def get_cart_count():
+
+    if not logged_in():
+        return 0
+
+    conn = db()
+
+    count = conn.execute("""
+        SELECT COALESCE(SUM(quantity), 0)
+        FROM cart
+        WHERE user_id = ?
+    """, (
+        session["user_id"],
+    )).fetchone()[0]
+
+    conn.close()
+
+    return int(count)
+
+
+def get_wishlist_count():
+
+    if not logged_in():
+        return 0
+
+    conn = db()
+
+    count = conn.execute("""
+        SELECT COUNT(*)
+        FROM wishlist
+        WHERE user_id = ?
+    """, (
+        session["user_id"],
+    )).fetchone()[0]
+
+    conn.close()
+
+    return int(count)
+
 
 def get_wishlist_ids():
 
@@ -268,24 +266,20 @@ def get_wishlist_ids():
 
     conn = db()
 
-    try:
+    rows = conn.execute("""
+        SELECT product_id
+        FROM wishlist
+        WHERE user_id = ?
+    """, (
+        session["user_id"],
+    )).fetchall()
 
-        rows = conn.execute("""
-            SELECT product_id
-            FROM wishlist
-            WHERE user_id = ?
-        """, (
-            session["user_id"],
-        )).fetchall()
+    conn.close()
 
-        return [
-            row["product_id"]
-            for row in rows
-        ]
-
-    finally:
-
-        conn.close()
+    return [
+        row["product_id"]
+        for row in rows
+    ]
 
 
 # =========================================================
@@ -306,61 +300,26 @@ def inject_globals():
 
     conn = db()
 
-    try:
+    user = conn.execute("""
+        SELECT username
+        FROM users
+        WHERE id = ?
+    """, (
+        session["user_id"],
+    )).fetchone()
 
-        user_id = session["user_id"]
+    conn.close()
 
-        cart_count = conn.execute("""
-            SELECT COALESCE(SUM(quantity), 0)
-            FROM cart
-            WHERE user_id = ?
-        """, (
-            user_id,
-        )).fetchone()[0]
-
-        wishlist_count = conn.execute("""
-            SELECT COUNT(*)
-            FROM wishlist
-            WHERE user_id = ?
-        """, (
-            user_id,
-        )).fetchone()[0]
-
-        user = conn.execute("""
-            SELECT username
-            FROM users
-            WHERE id = ?
-        """, (
-            user_id,
-        )).fetchone()
-
-        wishlist_rows = conn.execute("""
-            SELECT product_id
-            FROM wishlist
-            WHERE user_id = ?
-        """, (
-            user_id,
-        )).fetchall()
-
-        wishlist_ids = [
-            row["product_id"]
-            for row in wishlist_rows
-        ]
-
-        return {
-            "cart_count": cart_count,
-            "wishlist_count": wishlist_count,
-            "logged_user": user["username"] if user else None,
-            "wishlist_ids": wishlist_ids
-        }
-
-    finally:
-
-        conn.close()
+    return {
+        "cart_count": get_cart_count(),
+        "wishlist_count": get_wishlist_count(),
+        "logged_user": user["username"] if user else None,
+        "wishlist_ids": get_wishlist_ids()
+    }
 
 
 # =========================================================
-# LOGIN / REGISTER
+# LOGIN
 # =========================================================
 
 @app.route("/", methods=["GET", "POST"])
@@ -392,7 +351,57 @@ def login():
 
         conn = db()
 
+        user = conn.execute("""
+            SELECT *
+            FROM users
+            WHERE username = ?
+        """, (
+            username,
+        )).fetchone()
+
+        if user:
+
+            if check_password_hash(
+                user["password"],
+                password
+            ):
+
+                session.clear()
+
+                session["user_id"] = user["id"]
+                session["username"] = user["username"]
+
+                conn.close()
+
+                return redirect(
+                    url_for("home")
+                )
+
+            conn.close()
+
+            flash(
+                "Incorrect password.",
+                "danger"
+            )
+
+            return render_template("login.html")
+
+        password_hash = generate_password_hash(password)
+
         try:
+
+            conn.execute("""
+                INSERT INTO users(
+                    username,
+                    password
+                )
+                VALUES (?, ?)
+            """, (
+                username,
+                password_hash
+            ))
+
+            conn.commit()
 
             user = conn.execute("""
                 SELECT *
@@ -402,86 +411,36 @@ def login():
                 username,
             )).fetchone()
 
-            if user:
+            session.clear()
 
-                if check_password_hash(
-                    user["password"],
-                    password
-                ):
-
-                    session.clear()
-
-                    session["user_id"] = user["id"]
-                    session["username"] = user["username"]
-
-                    return redirect(
-                        url_for("home")
-                    )
-
-                flash(
-                    "Incorrect password.",
-                    "danger"
-                )
-
-                return render_template(
-                    "login.html"
-                )
-
-            password_hash = generate_password_hash(
-                password
-            )
-
-            try:
-
-                cursor = conn.execute("""
-                    INSERT INTO users(
-                        username,
-                        password
-                    )
-                    VALUES (?, ?)
-                """, (
-                    username,
-                    password_hash
-                ))
-
-                conn.commit()
-
-                user_id = cursor.lastrowid
-
-                session.clear()
-
-                session["user_id"] = user_id
-                session["username"] = username
-
-                flash(
-                    "Account created successfully!",
-                    "success"
-                )
-
-                return redirect(
-                    url_for("home")
-                )
-
-            except sqlite3.IntegrityError:
-
-                conn.rollback()
-
-                flash(
-                    "Username already exists.",
-                    "danger"
-                )
-
-                return render_template(
-                    "login.html"
-                )
-
-        finally:
+            session["user_id"] = user["id"]
+            session["username"] = user["username"]
 
             conn.close()
 
-    return render_template(
-        "login.html"
-    )
+            flash(
+                "Account created successfully!",
+                "success"
+            )
+
+            return redirect(
+                url_for("home")
+            )
+
+        except sqlite3.IntegrityError:
+
+            conn.close()
+
+            flash(
+                "Username already exists.",
+                "danger"
+            )
+
+            return render_template(
+                "login.html"
+            )
+
+    return render_template("login.html")
 
 
 # =========================================================
@@ -506,71 +465,54 @@ def home():
 
     conn = db()
 
-    try:
+    query = """
+        SELECT *
+        FROM products
+        WHERE 1 = 1
+    """
 
-        query = """
-            SELECT *
-            FROM products
-            WHERE 1 = 1
-        """
+    args = []
 
-        args = []
-
-        if category != "All":
-
-            query += """
-                AND category = ?
-            """
-
-            args.append(category)
-
-        if search:
-
-            query += """
-                AND (
-                    name LIKE ?
-                    OR category LIKE ?
-                )
-            """
-
-            args.extend([
-                f"%{search}%",
-                f"%{search}%"
-            ])
+    if category != "All":
 
         query += """
-            ORDER BY id
+            AND category = ?
         """
 
-        products = conn.execute(
-            query,
-            args
-        ).fetchall()
+        args.append(category)
 
-        wishlist_rows = conn.execute("""
-            SELECT product_id
-            FROM wishlist
-            WHERE user_id = ?
-        """, (
-            session["user_id"],
-        )).fetchall()
+    if search:
 
-        wishlist_ids = [
-            row["product_id"]
-            for row in wishlist_rows
-        ]
+        query += """
+            AND (
+                name LIKE ?
+                OR category LIKE ?
+            )
+        """
 
-        return render_template(
-            "home.html",
-            products=products,
-            category=category,
-            search=search,
-            wishlist_ids=wishlist_ids
-        )
+        args.extend([
+            f"%{search}%",
+            f"%{search}%"
+        ])
 
-    finally:
+    query += """
+        ORDER BY id
+    """
 
-        conn.close()
+    products = conn.execute(
+        query,
+        args
+    ).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "home.html",
+        products=products,
+        category=category,
+        search=search,
+        wishlist_ids=get_wishlist_ids()
+    )
 
 
 # =========================================================
@@ -592,32 +534,34 @@ def wishlist_toggle(product_id):
 
     conn = db()
 
+    product = conn.execute("""
+        SELECT id
+        FROM products
+        WHERE id = ?
+    """, (
+        product_id,
+    )).fetchone()
+
+    if not product:
+
+        conn.close()
+
+        return jsonify({
+            "ok": False,
+            "message": "Product not found."
+        }), 404
+
+    exists = conn.execute("""
+        SELECT 1
+        FROM wishlist
+        WHERE user_id = ?
+        AND product_id = ?
+    """, (
+        session["user_id"],
+        product_id
+    )).fetchone()
+
     try:
-
-        product = conn.execute("""
-            SELECT id
-            FROM products
-            WHERE id = ?
-        """, (
-            product_id,
-        )).fetchone()
-
-        if not product:
-
-            return jsonify({
-                "ok": False,
-                "message": "Product not found."
-            }), 404
-
-        exists = conn.execute("""
-            SELECT 1
-            FROM wishlist
-            WHERE user_id = ?
-            AND product_id = ?
-        """, (
-            session["user_id"],
-            product_id
-        )).fetchone()
 
         if exists:
 
@@ -649,7 +593,7 @@ def wishlist_toggle(product_id):
 
         conn.commit()
 
-        count = conn.execute("""
+        wishlist_count = conn.execute("""
             SELECT COUNT(*)
             FROM wishlist
             WHERE user_id = ?
@@ -657,25 +601,24 @@ def wishlist_toggle(product_id):
             session["user_id"],
         )).fetchone()[0]
 
-        return jsonify({
-            "ok": True,
-            "active": active,
-            "product_id": product_id,
-            "wishlist_count": count
-        })
-
-    except sqlite3.OperationalError as error:
+    except sqlite3.Error as error:
 
         conn.rollback()
+        conn.close()
 
         return jsonify({
             "ok": False,
             "message": str(error)
         }), 500
 
-    finally:
+    conn.close()
 
-        conn.close()
+    return jsonify({
+        "ok": True,
+        "active": active,
+        "product_id": product_id,
+        "wishlist_count": int(wishlist_count)
+    })
 
 
 # =========================================================
@@ -690,33 +633,23 @@ def wishlist():
 
     conn = db()
 
-    try:
+    products = conn.execute("""
+        SELECT p.*
+        FROM wishlist w
+        JOIN products p
+            ON p.id = w.product_id
+        WHERE w.user_id = ?
+        ORDER BY p.id
+    """, (
+        session["user_id"],
+    )).fetchall()
 
-        products = conn.execute("""
-            SELECT p.*
-            FROM wishlist w
-            JOIN products p
-                ON p.id = w.product_id
-            WHERE w.user_id = ?
-            ORDER BY p.id
-        """, (
-            session["user_id"],
-        )).fetchall()
+    conn.close()
 
-        wishlist_ids = [
-            product["id"]
-            for product in products
-        ]
-
-        return render_template(
-            "wishlist.html",
-            products=products,
-            wishlist_ids=wishlist_ids
-        )
-
-    finally:
-
-        conn.close()
+    return render_template(
+        "wishlist.html",
+        products=products
+    )
 
 
 # =========================================================
@@ -740,42 +673,42 @@ def cart_add(product_id):
                 "login": True
             }), 401
 
-        return redirect(
-            url_for("login")
-        )
+        return redirect(url_for("login"))
 
     conn = db()
 
+    product = conn.execute("""
+        SELECT *
+        FROM products
+        WHERE id = ?
+    """, (
+        product_id,
+    )).fetchone()
+
+    if not product:
+
+        conn.close()
+
+        return jsonify({
+            "ok": False,
+            "message": "Product not found."
+        }), 404
+
+    row = conn.execute("""
+        SELECT quantity
+        FROM cart
+        WHERE user_id = ?
+        AND product_id = ?
+    """, (
+        session["user_id"],
+        product_id
+    )).fetchone()
+
     try:
-
-        product = conn.execute("""
-            SELECT *
-            FROM products
-            WHERE id = ?
-        """, (
-            product_id,
-        )).fetchone()
-
-        if not product:
-
-            return jsonify({
-                "ok": False,
-                "message": "Product not found."
-            }), 404
-
-        row = conn.execute("""
-            SELECT quantity
-            FROM cart
-            WHERE user_id = ?
-            AND product_id = ?
-        """, (
-            session["user_id"],
-            product_id
-        )).fetchone()
 
         if row:
 
-            new_quantity = row["quantity"] + 1
+            new_quantity = int(row["quantity"]) + 1
 
             conn.execute("""
                 UPDATE cart
@@ -807,41 +740,49 @@ def cart_add(product_id):
 
         conn.commit()
 
-        if request.headers.get(
-            "X-Requested-With"
-        ) == "XMLHttpRequest":
+        cart_count = conn.execute("""
+            SELECT COALESCE(SUM(quantity), 0)
+            FROM cart
+            WHERE user_id = ?
+        """, (
+            session["user_id"],
+        )).fetchone()[0]
 
-            return jsonify({
-                "ok": True,
-                "message": f"{product['name']} added to cart.",
-                "quantity": new_quantity
-            })
-
-        flash(
-            f"{product['name']} added to cart.",
-            "success"
-        )
-
-        return redirect(
-            request.referrer or url_for("home")
-        )
-
-    except sqlite3.OperationalError as error:
+    except sqlite3.Error as error:
 
         conn.rollback()
+        conn.close()
 
         return jsonify({
             "ok": False,
             "message": str(error)
         }), 500
 
-    finally:
+    conn.close()
 
-        conn.close()
+    if request.headers.get(
+        "X-Requested-With"
+    ) == "XMLHttpRequest":
+
+        return jsonify({
+            "ok": True,
+            "message": f"{product['name']} added to cart.",
+            "quantity": new_quantity,
+            "cart_count": int(cart_count)
+        })
+
+    flash(
+        f"{product['name']} added to cart.",
+        "success"
+    )
+
+    return redirect(
+        request.referrer or url_for("home")
+    )
 
 
 # =========================================================
-# CART
+# CART PAGE
 # =========================================================
 
 @app.route("/cart")
@@ -850,10 +791,14 @@ def cart():
     if not logged_in():
         return redirect(url_for("login"))
 
+    items = get_cart()
+
+    subtotal = get_cart_total()
+
     return render_template(
         "cart.html",
-        items=get_cart(),
-        subtotal=get_cart_total()
+        items=items,
+        subtotal=subtotal
     )
 
 
@@ -877,65 +822,58 @@ def cart_update(product_id):
 
     conn = db()
 
-    try:
+    row = conn.execute("""
+        SELECT quantity
+        FROM cart
+        WHERE user_id = ?
+        AND product_id = ?
+    """, (
+        session["user_id"],
+        product_id
+    )).fetchone()
 
-        row = conn.execute("""
-            SELECT quantity
-            FROM cart
-            WHERE user_id = ?
-            AND product_id = ?
-        """, (
-            session["user_id"],
-            product_id
-        )).fetchone()
+    if row:
 
-        if row:
+        quantity = int(row["quantity"])
 
-            quantity = row["quantity"]
+        if action == "plus":
+            quantity += 1
 
-            if action == "plus":
-                quantity += 1
+        elif action == "minus":
+            quantity -= 1
 
-            elif action == "minus":
-                quantity -= 1
+        if quantity <= 0:
 
-            if quantity <= 0:
+            conn.execute("""
+                DELETE FROM cart
+                WHERE user_id = ?
+                AND product_id = ?
+            """, (
+                session["user_id"],
+                product_id
+            ))
 
-                conn.execute("""
-                    DELETE FROM cart
-                    WHERE user_id = ?
-                    AND product_id = ?
-                """, (
-                    session["user_id"],
-                    product_id
-                ))
+        else:
 
-            else:
+            conn.execute("""
+                UPDATE cart
+                SET quantity = ?
+                WHERE user_id = ?
+                AND product_id = ?
+            """, (
+                quantity,
+                session["user_id"],
+                product_id
+            ))
 
-                conn.execute("""
-                    UPDATE cart
-                    SET quantity = ?
-                    WHERE user_id = ?
-                    AND product_id = ?
-                """, (
-                    quantity,
-                    session["user_id"],
-                    product_id
-                ))
+    conn.commit()
+    conn.close()
 
-            conn.commit()
-
-    finally:
-
-        conn.close()
-
-    return redirect(
-        url_for("cart")
-    )
+    return redirect(url_for("cart"))
 
 
 # =========================================================
-# REMOVE CART ITEM
+# REMOVE FROM CART
 # =========================================================
 
 @app.route(
@@ -949,31 +887,24 @@ def cart_remove(product_id):
 
     conn = db()
 
-    try:
+    conn.execute("""
+        DELETE FROM cart
+        WHERE user_id = ?
+        AND product_id = ?
+    """, (
+        session["user_id"],
+        product_id
+    ))
 
-        conn.execute("""
-            DELETE FROM cart
-            WHERE user_id = ?
-            AND product_id = ?
-        """, (
-            session["user_id"],
-            product_id
-        ))
-
-        conn.commit()
-
-    finally:
-
-        conn.close()
+    conn.commit()
+    conn.close()
 
     flash(
         "Product removed from cart.",
         "success"
     )
 
-    return redirect(
-        url_for("cart")
-    )
+    return redirect(url_for("cart"))
 
 
 # =========================================================
@@ -998,9 +929,7 @@ def checkout():
             "danger"
         )
 
-        return redirect(
-            url_for("cart")
-        )
+        return redirect(url_for("cart"))
 
     total = get_cart_total()
 
@@ -1030,7 +959,8 @@ def checkout():
             )
 
         order_code = (
-            "SE" +
+            "SE"
+            +
             datetime.datetime.now().strftime(
                 "%Y%m%d%H%M%S"
             )
@@ -1090,28 +1020,23 @@ def checkout():
         except Exception:
 
             conn.rollback()
+            conn.close()
 
             flash(
                 "Unable to place order. Please try again.",
                 "danger"
             )
 
-            return redirect(
-                url_for("checkout")
-            )
+            return redirect(url_for("checkout"))
 
-        finally:
-
-            conn.close()
+        conn.close()
 
         flash(
             f"Order {order_code} placed successfully!",
             "success"
         )
 
-        return redirect(
-            url_for("orders")
-        )
+        return redirect(url_for("orders"))
 
     return render_template(
         "checkout.html",
@@ -1132,52 +1057,46 @@ def orders():
 
     conn = db()
 
-    try:
+    orders_rows = conn.execute("""
+        SELECT *
+        FROM orders
+        WHERE user_id = ?
+        ORDER BY id DESC
+    """, (
+        session["user_id"],
+    )).fetchall()
 
-        orders_rows = conn.execute("""
+    result = []
+
+    for order in orders_rows:
+
+        items = conn.execute("""
             SELECT *
-            FROM orders
-            WHERE user_id = ?
-            ORDER BY id DESC
+            FROM order_items
+            WHERE order_id = ?
+            ORDER BY id
         """, (
-            session["user_id"],
+            order["id"],
         )).fetchall()
 
-        result = []
+        result.append({
+            "order": order,
+            "items": items
+        })
 
-        for order in orders_rows:
+    conn.close()
 
-            items = conn.execute("""
-                SELECT *
-                FROM order_items
-                WHERE order_id = ?
-                ORDER BY id
-            """, (
-                order["id"],
-            )).fetchall()
-
-            result.append({
-                "order": order,
-                "items": items
-            })
-
-        return render_template(
-            "orders.html",
-            orders=result
-        )
-
-    finally:
-
-        conn.close()
+    return render_template(
+        "orders.html",
+        orders=result
+    )
 
 
 # =========================================================
 # PRODUCT DETAILS
 # =========================================================
 
-@app.route(
-    "/product/<int:product_id>"
-)
+@app.route("/product/<int:product_id>")
 def product(product_id):
 
     if not logged_in():
@@ -1185,19 +1104,15 @@ def product(product_id):
 
     conn = db()
 
-    try:
+    product_row = conn.execute("""
+        SELECT *
+        FROM products
+        WHERE id = ?
+    """, (
+        product_id,
+    )).fetchone()
 
-        product_row = conn.execute("""
-            SELECT *
-            FROM products
-            WHERE id = ?
-        """, (
-            product_id,
-        )).fetchone()
-
-    finally:
-
-        conn.close()
+    conn.close()
 
     if not product_row:
 
@@ -1206,9 +1121,7 @@ def product(product_id):
             "danger"
         )
 
-        return redirect(
-            url_for("home")
-        )
+        return redirect(url_for("home"))
 
     return render_template(
         "product.html",
@@ -1225,9 +1138,7 @@ def logout():
 
     session.clear()
 
-    return redirect(
-        url_for("login")
-    )
+    return redirect(url_for("login"))
 
 
 # =========================================================
@@ -1237,42 +1148,21 @@ def logout():
 @app.route("/health")
 def health():
 
-    try:
-
-        conn = db()
-
-        tables = conn.execute("""
-            SELECT name
-            FROM sqlite_master
-            WHERE type = 'table'
-        """).fetchall()
-
-        conn.close()
-
-        table_names = [
-            row["name"]
-            for row in tables
-        ]
-
-        return jsonify({
-            "status": "ok",
-            "application": "ShopEase",
-            "database": "connected",
-            "tables": table_names
-        })
-
-    except Exception as error:
-
-        return jsonify({
-            "status": "error",
-            "application": "ShopEase",
-            "database": "error",
-            "message": str(error)
-        }), 500
+    return jsonify({
+        "status": "ok",
+        "application": "ShopEase"
+    })
 
 
 # =========================================================
-# LOCAL DEVELOPMENT
+# INITIALIZE DATABASE
+# =========================================================
+
+init_db()
+
+
+# =========================================================
+# START LOCAL SERVER
 # =========================================================
 
 if __name__ == "__main__":

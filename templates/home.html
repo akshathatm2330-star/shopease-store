@@ -4,9 +4,17 @@
 
 {% block content %}
 
+<!-- =========================================================
+     HERO
+========================================================= -->
+
 <div class="hero">
 
     <div class="hero-content">
+
+        <div class="hero-tag">
+            ✨ WELCOME TO SHOPEASE
+        </div>
 
         <h1>🔥 MEGA SHOPPING SALE</h1>
 
@@ -15,13 +23,17 @@
         </p>
 
         <div class="hero-badge">
-            ✨ Shop Smart • Shop Easy
+            🛍️ Shop Smart • Shop Easy
         </div>
 
     </div>
 
 </div>
 
+
+<!-- =========================================================
+     SEARCH & CATEGORIES
+========================================================= -->
 
 <div class="toolbar">
 
@@ -50,7 +62,7 @@
         {% endif %}
 
         <button type="submit">
-            Search
+            🔍 Search
         </button>
 
     </form>
@@ -64,7 +76,15 @@
             href="{{ url_for('home', category=c, search=search) }}"
             class="{% if category == c %}selected{% endif %}"
         >
-            {{ c }}
+            {% if c == "All" %}
+                🏠 All
+            {% elif c == "Electronics" %}
+                💻 Electronics
+            {% elif c == "Fashion" %}
+                👕 Fashion
+            {% elif c == "Home" %}
+                🏡 Home
+            {% endif %}
         </a>
 
         {% endfor %}
@@ -73,6 +93,10 @@
 
 </div>
 
+
+<!-- =========================================================
+     PRODUCT GRID
+========================================================= -->
 
 <div class="grid">
 
@@ -83,6 +107,8 @@
     id="product-{{ p['id'] }}"
 >
 
+    <!-- PRODUCT IMAGE -->
+
     <div class="image-wrap">
 
         <img
@@ -92,24 +118,36 @@
         >
 
 
-        <!-- WISHLIST HEART -->
+        <!-- =================================================
+             WISHLIST BUTTON
+
+             IMPORTANT:
+             app.js handles this button.
+             Do NOT add another wishlist script here.
+        ================================================== -->
 
         <button
             type="button"
             class="heart {% if p['id'] in wishlist_ids %}active{% endif %}"
             data-product="{{ p['id'] }}"
-            aria-label="Wishlist"
+            aria-label="Add to wishlist"
             title="Wishlist"
         >
+
             <span class="heart-symbol">
+
                 {% if p['id'] in wishlist_ids %}
                     ♥
                 {% else %}
                     ♡
                 {% endif %}
+
             </span>
+
         </button>
 
+
+        <!-- DISCOUNT -->
 
         <span class="discount">
 
@@ -124,6 +162,10 @@
     </div>
 
 
+    <!-- =====================================================
+         PRODUCT DETAILS
+    ====================================================== -->
+
     <div class="card-body">
 
         <h3>
@@ -133,9 +175,11 @@
 
         <div class="rating">
 
-            ⭐ {{ p['rating'] }}
+            <span class="stars">
+                ⭐ {{ p['rating'] }}
+            </span>
 
-            <span>
+            <span class="reviews">
                 ({{ p['reviews'] }} reviews)
             </span>
 
@@ -158,13 +202,17 @@
         </p>
 
 
+        <!-- =================================================
+             ACTION BUTTONS
+        ================================================== -->
+
         <div class="card-actions">
 
             <a
                 class="btn light"
                 href="{{ url_for('product', product_id=p['id']) }}"
             >
-                👁 View
+                👁️ View
             </a>
 
 
@@ -182,7 +230,12 @@
 
 </div>
 
+
 {% else %}
+
+<!-- =========================================================
+     NO PRODUCTS
+========================================================= -->
 
 <div class="empty full">
 
@@ -212,299 +265,23 @@
 </div>
 
 
-<script>
-
-document.addEventListener("DOMContentLoaded", function () {
-
-    /*
-    ========================================================
-    ADD TO CART
-    ========================================================
-    */
-
-    const cartButtons =
-        document.querySelectorAll(".add-to-cart-btn");
-
-
-    cartButtons.forEach(function (button) {
-
-        button.addEventListener("click", async function () {
-
-            if (this.disabled) {
-                return;
-            }
-
-            const productId =
-                this.dataset.productId;
-
-            const originalText =
-                this.innerHTML;
-
-            this.disabled = true;
-
-            this.innerHTML = "⏳ Adding...";
-
-
-            try {
-
-                const response = await fetch(
-                    "/cart/add/" + productId,
-                    {
-                        method: "POST",
-
-                        headers: {
-                            "X-Requested-With":
-                                "XMLHttpRequest"
-                        }
-                    }
-                );
-
-
-                const data =
-                    await response.json();
-
-
-                if (data.login) {
-
-                    window.location.href = "/";
-
-                    return;
-                }
-
-
-                if (!data.ok) {
-
-                    throw new Error(
-                        data.message ||
-                        "Unable to add product"
-                    );
-
-                }
-
-
-                /*
-                Update cart counter with
-                the actual database count.
-                */
-
-                const cartCount =
-                    document.getElementById(
-                        "cart-count"
-                    );
-
-
-                if (cartCount &&
-                    data.cart_count !== undefined) {
-
-                    cartCount.textContent =
-                        data.cart_count;
-                }
-
-
-                this.innerHTML = "✓ Added";
-
-                this.classList.add("added");
-
-
-                setTimeout(() => {
-
-                    this.innerHTML =
-                        originalText;
-
-                    this.disabled = false;
-
-                    this.classList.remove("added");
-
-                }, 1000);
-
-
-            } catch (error) {
-
-                console.error(
-                    "Cart Error:",
-                    error
-                );
-
-
-                this.innerHTML =
-                    "❌ Try Again";
-
-
-                setTimeout(() => {
-
-                    this.innerHTML =
-                        originalText;
-
-                    this.disabled = false;
-
-                }, 1200);
-
-            }
-
-        });
-
-    });
-
-
-    /*
-    ========================================================
-    WISHLIST
-    ========================================================
-    */
-
-    const hearts =
-        document.querySelectorAll(".heart");
-
-
-    hearts.forEach(function (heart) {
-
-        heart.addEventListener(
-            "click",
-            async function () {
-
-                if (this.dataset.loading === "true") {
-                    return;
-                }
-
-
-                const productId =
-                    this.dataset.product;
-
-
-                const symbol =
-                    this.querySelector(
-                        ".heart-symbol"
-                    );
-
-
-                this.dataset.loading = "true";
-
-
-                try {
-
-                    const response =
-                        await fetch(
-                            "/wishlist/toggle/" +
-                            productId,
-                            {
-                                method: "POST",
-
-                                headers: {
-                                    "X-Requested-With":
-                                        "XMLHttpRequest"
-                                }
-                            }
-                        );
-
-
-                    const data =
-                        await response.json();
-
-
-                    if (data.login) {
-
-                        window.location.href = "/";
-
-                        return;
-                    }
-
-
-                    if (!data.ok) {
-
-                        throw new Error(
-                            data.message ||
-                            "Wishlist error"
-                        );
-
-                    }
-
-
-                    /*
-                    ========================================
-                    PRODUCT ADDED TO WISHLIST
-                    ========================================
-                    */
-
-                    if (data.active) {
-
-                        this.classList.add("active");
-
-                        symbol.textContent = "♥";
-
-
-                    } else {
-
-
-                        /*
-                        ====================================
-                        PRODUCT REMOVED FROM WISHLIST
-                        ====================================
-                        */
-
-                        this.classList.remove("active");
-
-                        symbol.textContent = "♡";
-
-                    }
-
-
-                    /*
-                    Update wishlist counter.
-                    */
-
-                    const wishlistCount =
-                        document.getElementById(
-                            "wishlist-count"
-                        );
-
-
-                    if (
-                        wishlistCount &&
-                        data.wishlist_count !== undefined
-                    ) {
-
-                        wishlistCount.textContent =
-                            data.wishlist_count;
-
-                    }
-
-
-                } catch (error) {
-
-                    console.error(
-                        "Wishlist Error:",
-                        error
-                    );
-
-                } finally {
-
-                    this.dataset.loading = "false";
-
-                }
-
-            }
-        );
-
-    });
-
-});
-
-</script>
-
+<!-- =========================================================
+     HOME PAGE STYLES
+========================================================= -->
 
 <style>
 
-/* ========================================================
+/* =========================================================
    HERO
-======================================================== */
+========================================================= */
 
 .hero {
 
-    padding: 38px 25px;
+    padding: 45px 25px;
 
-    margin-bottom: 25px;
+    margin-bottom: 28px;
 
-    border-radius: 18px;
+    border-radius: 20px;
 
     text-align: center;
 
@@ -513,12 +290,85 @@ document.addEventListener("DOMContentLoaded", function () {
     background:
         linear-gradient(
             135deg,
-            #667eea,
-            #764ba2
+            #667eea 0%,
+            #764ba2 50%,
+            #f093fb 100%
         );
 
     box-shadow:
-        0 8px 25px rgba(0,0,0,0.15);
+        0 10px 30px rgba(0,0,0,0.15);
+
+    overflow: hidden;
+
+    position: relative;
+}
+
+
+.hero::before {
+
+    content: "";
+
+    position: absolute;
+
+    width: 180px;
+
+    height: 180px;
+
+    border-radius: 50%;
+
+    background: rgba(255,255,255,0.10);
+
+    top: -70px;
+
+    left: -50px;
+}
+
+
+.hero::after {
+
+    content: "";
+
+    position: absolute;
+
+    width: 220px;
+
+    height: 220px;
+
+    border-radius: 50%;
+
+    background: rgba(255,255,255,0.08);
+
+    right: -70px;
+
+    bottom: -100px;
+}
+
+
+.hero-content {
+
+    position: relative;
+
+    z-index: 2;
+}
+
+
+.hero-tag {
+
+    display: inline-block;
+
+    padding: 7px 16px;
+
+    margin-bottom: 12px;
+
+    border-radius: 30px;
+
+    background: rgba(255,255,255,0.16);
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.5px;
 }
 
 
@@ -526,17 +376,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
     margin: 0;
 
-    font-size: 32px;
+    font-size: 34px;
 
-    font-weight: 800;
+    font-weight: 900;
+
+    letter-spacing: 0.3px;
 }
 
 
 .hero p {
 
-    margin: 10px 0;
+    margin: 12px 0;
 
     font-size: 17px;
+
+    opacity: 0.95;
 }
 
 
@@ -546,25 +400,33 @@ document.addEventListener("DOMContentLoaded", function () {
 
     margin-top: 8px;
 
-    padding: 8px 18px;
+    padding: 9px 20px;
 
     border-radius: 30px;
 
-    background: rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.20);
+
+    border: 1px solid rgba(255,255,255,0.20);
 
     font-size: 14px;
+
+    font-weight: 600;
 }
 
 
-/* ========================================================
-   SEARCH
-======================================================== */
+/* =========================================================
+   TOOLBAR
+========================================================= */
 
 .toolbar {
 
-    margin-bottom: 25px;
+    margin-bottom: 28px;
 }
 
+
+/* =========================================================
+   SEARCH
+========================================================= */
 
 .search {
 
@@ -573,6 +435,8 @@ document.addEventListener("DOMContentLoaded", function () {
     gap: 10px;
 
     margin-bottom: 18px;
+
+    width: 100%;
 }
 
 
@@ -580,15 +444,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
     flex: 1;
 
-    padding: 13px 16px;
+    min-width: 0;
+
+    padding: 14px 17px;
 
     border: 1px solid #ddd;
 
-    border-radius: 10px;
+    border-radius: 11px;
 
     font-size: 15px;
 
     outline: none;
+
+    background: white;
+
+    transition: 0.2s;
 }
 
 
@@ -603,11 +473,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
 .search button {
 
-    padding: 12px 22px;
+    padding: 13px 23px;
 
     border: none;
 
-    border-radius: 10px;
+    border-radius: 11px;
 
     background: #667eea;
 
@@ -616,12 +486,22 @@ document.addEventListener("DOMContentLoaded", function () {
     font-weight: 700;
 
     cursor: pointer;
+
+    transition: 0.2s;
 }
 
 
-/* ========================================================
+.search button:hover {
+
+    background: #5568d8;
+
+    transform: translateY(-1px);
+}
+
+
+/* =========================================================
    CATEGORIES
-======================================================== */
+========================================================= */
 
 .categories {
 
@@ -635,7 +515,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 .categories a {
 
-    padding: 9px 18px;
+    padding: 10px 18px;
 
     border-radius: 25px;
 
@@ -647,6 +527,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     font-weight: 600;
 
+    font-size: 14px;
+
     transition: 0.2s;
 }
 
@@ -654,6 +536,8 @@ document.addEventListener("DOMContentLoaded", function () {
 .categories a:hover {
 
     background: #e3e6f0;
+
+    transform: translateY(-1px);
 }
 
 
@@ -662,12 +546,15 @@ document.addEventListener("DOMContentLoaded", function () {
     background: #667eea;
 
     color: white;
+
+    box-shadow:
+        0 4px 12px rgba(102,126,234,0.25);
 }
 
 
-/* ========================================================
+/* =========================================================
    PRODUCT GRID
-======================================================== */
+========================================================= */
 
 .grid {
 
@@ -683,15 +570,15 @@ document.addEventListener("DOMContentLoaded", function () {
 }
 
 
-/* ========================================================
-   CARD
-======================================================== */
+/* =========================================================
+   PRODUCT CARD
+========================================================= */
 
 .card {
 
     background: white;
 
-    border-radius: 16px;
+    border-radius: 17px;
 
     overflow: hidden;
 
@@ -699,37 +586,46 @@ document.addEventListener("DOMContentLoaded", function () {
         0 5px 18px rgba(0,0,0,0.08);
 
     transition:
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
+        transform 0.25s ease,
+        box-shadow 0.25s ease;
+
+    border: 1px solid rgba(0,0,0,0.03);
 }
 
 
 .card:hover {
 
-    transform: translateY(-5px);
+    transform: translateY(-6px);
 
     box-shadow:
-        0 12px 28px rgba(0,0,0,0.13);
+        0 14px 32px rgba(0,0,0,0.13);
 }
 
 
-/* ========================================================
+/* =========================================================
    IMAGE
-======================================================== */
+========================================================= */
 
 .image-wrap {
 
     position: relative;
 
-    height: 220px;
+    height: 225px;
 
-    background: #f7f8fb;
+    background:
+        linear-gradient(
+            135deg,
+            #f7f8fb,
+            #eef0f6
+        );
 
     display: flex;
 
     align-items: center;
 
     justify-content: center;
+
+    overflow: hidden;
 }
 
 
@@ -742,20 +638,20 @@ document.addEventListener("DOMContentLoaded", function () {
     object-fit: contain;
 
     padding: 15px;
+
+    transition: transform 0.3s ease;
 }
 
 
-/* ========================================================
+.card:hover .image-wrap img {
+
+    transform: scale(1.04);
+}
+
+
+/* =========================================================
    WISHLIST HEART
-======================================================== */
-
-/*
-IMPORTANT:
-
-The button/circle ALWAYS stays WHITE.
-
-Only .heart-symbol becomes RED.
-*/
+========================================================= */
 
 .heart {
 
@@ -765,20 +661,15 @@ Only .heart-symbol becomes RED.
 
     right: 12px;
 
-    width: 42px;
+    width: 43px;
 
-    height: 42px;
+    height: 43px;
 
     border: none;
 
     border-radius: 50%;
 
     background: #ffffff !important;
-
-    color: #555;
-
-    box-shadow:
-        0 3px 12px rgba(0,0,0,0.15);
 
     display: flex;
 
@@ -791,6 +682,9 @@ Only .heart-symbol becomes RED.
     z-index: 5;
 
     padding: 0;
+
+    box-shadow:
+        0 3px 12px rgba(0,0,0,0.15);
 
     transition:
         transform 0.2s ease,
@@ -805,56 +699,17 @@ Only .heart-symbol becomes RED.
     background: #ffffff !important;
 
     box-shadow:
-        0 5px 15px rgba(0,0,0,0.20);
+        0 6px 16px rgba(0,0,0,0.20);
 }
 
 
-/*
-Normal heart
-*/
+.heart:disabled {
 
-.heart-symbol {
+    cursor: wait;
 
-    font-size: 25px;
-
-    line-height: 1;
-
-    color: #555;
-
-    transition:
-        color 0.2s ease,
-        transform 0.2s ease;
+    opacity: 0.75;
 }
 
-
-/*
-ACTIVE:
-
-ONLY THE HEART IS RED.
-
-The circle remains WHITE.
-*/
-
-.heart.active {
-
-    background: #ffffff !important;
-
-    color: #555 !important;
-}
-
-
-.heart.active .heart-symbol {
-
-    color: #e63946 !important;
-
-    transform: scale(1.08);
-}
-
-
-/*
-Make sure no browser/button
-style turns the circle red.
-*/
 
 .heart:focus {
 
@@ -870,9 +725,39 @@ style turns the circle red.
 }
 
 
-/* ========================================================
+.heart-symbol {
+
+    display: block;
+
+    font-size: 26px;
+
+    line-height: 1;
+
+    color: #555;
+
+    transition:
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+
+.heart.active {
+
+    background: #ffffff !important;
+}
+
+
+.heart.active .heart-symbol {
+
+    color: #e63946 !important;
+
+    transform: scale(1.08);
+}
+
+
+/* =========================================================
    DISCOUNT
-======================================================== */
+========================================================= */
 
 .discount {
 
@@ -892,41 +777,64 @@ style turns the circle red.
 
     font-size: 12px;
 
-    font-weight: 700;
+    font-weight: 800;
+
+    box-shadow:
+        0 3px 8px rgba(230,57,70,0.25);
 }
 
 
-/* ========================================================
+/* =========================================================
    CARD BODY
-======================================================== */
+========================================================= */
 
 .card-body {
 
-    padding: 17px;
+    padding: 18px;
 }
 
 
 .card-body h3 {
 
-    margin: 0 0 8px;
+    margin: 0 0 9px;
 
     font-size: 18px;
+
+    font-weight: 800;
+
+    color: #222;
 }
 
 
+/* =========================================================
+   RATING
+========================================================= */
+
 .rating {
 
-    margin-bottom: 8px;
+    margin-bottom: 9px;
 
     font-size: 14px;
 }
 
 
-.rating span {
+.stars {
 
-    color: #777;
+    font-weight: 700;
 }
 
+
+.reviews {
+
+    color: #777;
+
+    margin-left: 3px;
+}
+
+
+/* =========================================================
+   PRICE
+========================================================= */
 
 .price {
 
@@ -934,13 +842,15 @@ style turns the circle red.
 
     font-size: 21px;
 
-    font-weight: 800;
+    font-weight: 900;
+
+    color: #222;
 }
 
 
 .price del {
 
-    margin-left: 6px;
+    margin-left: 7px;
 
     color: #999;
 
@@ -950,11 +860,15 @@ style turns the circle red.
 }
 
 
+/* =========================================================
+   DESCRIPTION
+========================================================= */
+
 .product-description {
 
     min-height: 45px;
 
-    margin: 8px 0 15px;
+    margin: 8px 0 16px;
 
     color: #666;
 
@@ -964,9 +878,9 @@ style turns the circle red.
 }
 
 
-/* ========================================================
-   BUTTONS
-======================================================== */
+/* =========================================================
+   CARD BUTTONS
+========================================================= */
 
 .card-actions {
 
@@ -994,7 +908,7 @@ style turns the circle red.
 
     display: inline-block;
 
-    padding: 10px 13px;
+    padding: 11px 13px;
 
     border: none;
 
@@ -1008,7 +922,15 @@ style turns the circle red.
 
     cursor: pointer;
 
-    transition: 0.2s;
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+
+.btn:hover {
+
+    transform: translateY(-1px);
 }
 
 
@@ -1046,15 +968,17 @@ style turns the circle red.
 }
 
 
-/* ========================================================
-   EMPTY
-======================================================== */
+/* =========================================================
+   EMPTY STATE
+========================================================= */
 
 .empty {
 
     text-align: center;
 
-    padding: 60px 20px;
+    padding: 70px 20px;
+
+    width: 100%;
 }
 
 
@@ -1066,25 +990,75 @@ style turns the circle red.
 
 .empty-icon {
 
-    font-size: 50px;
+    font-size: 55px;
+
+    margin-bottom: 10px;
 }
 
 
-/* ========================================================
-   MOBILE
-======================================================== */
+.empty h2 {
 
-@media (max-width: 600px) {
+    margin: 5px 0 8px;
+}
+
+
+.empty p {
+
+    color: #777;
+
+    margin-bottom: 20px;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 700px) {
+
+    .hero {
+
+        padding: 35px 18px;
+
+        border-radius: 16px;
+    }
+
 
     .hero h1 {
 
-        font-size: 24px;
+        font-size: 25px;
+    }
+
+
+    .hero p {
+
+        font-size: 15px;
     }
 
 
     .search {
 
         flex-direction: column;
+    }
+
+
+    .search button {
+
+        width: 100%;
+    }
+
+
+    .categories {
+
+        gap: 7px;
+    }
+
+
+    .categories a {
+
+        padding: 8px 13px;
+
+        font-size: 13px;
     }
 
 
@@ -1106,15 +1080,95 @@ style turns the circle red.
     }
 
 
+    .heart {
+
+        width: 38px;
+
+        height: 38px;
+
+        top: 8px;
+
+        right: 8px;
+    }
+
+
+    .heart-symbol {
+
+        font-size: 23px;
+    }
+
+
+    .discount {
+
+        left: 8px;
+
+        top: 8px;
+
+        padding: 5px 7px;
+
+        font-size: 10px;
+    }
+
+
     .card-body {
 
         padding: 12px;
     }
 
 
+    .card-body h3 {
+
+        font-size: 15px;
+    }
+
+
+    .price {
+
+        font-size: 17px;
+    }
+
+
+    .price del {
+
+        font-size: 11px;
+    }
+
+
+    .product-description {
+
+        font-size: 12px;
+
+        min-height: 50px;
+    }
+
+
     .card-actions {
 
         flex-direction: column;
+
+        gap: 7px;
+    }
+
+
+    .card-actions .btn {
+
+        width: 100%;
+    }
+
+}
+
+
+@media (max-width: 400px) {
+
+    .grid {
+
+        grid-template-columns: 1fr;
+    }
+
+
+    .image-wrap {
+
+        height: 210px;
     }
 
 }
